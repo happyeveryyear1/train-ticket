@@ -434,6 +434,8 @@ public class TravelServiceImpl implements TravelService {
         response.setStartStation(startPlaceName);
         response.setTerminalStation(endPlaceName);
 
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
+
         //Calculate the distance from the starting point
         int indexStart = route.getStations().indexOf(startPlaceName);
         int indexEnd = route.getStations().indexOf(endPlaceName);
