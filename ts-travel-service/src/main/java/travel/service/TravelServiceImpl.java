@@ -437,10 +437,14 @@ public class TravelServiceImpl implements TravelService {
         TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
 
         TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
-        
+
         //Calculate the distance from the starting point
         int indexStart = route.getStations().indexOf(startPlaceName);
         int indexEnd = route.getStations().indexOf(endPlaceName);
+
+        int indexStart1 = route.getStations().indexOf(startPlaceName);
+        int indexEnd1 = route.getStations().indexOf(endPlaceName);
+
         int distanceStart = route.getDistances().get(indexStart) - route.getDistances().get(0);
         int distanceEnd = route.getDistances().get(indexEnd) - route.getDistances().get(0);
         TrainType trainType = tr.getTrainType();
