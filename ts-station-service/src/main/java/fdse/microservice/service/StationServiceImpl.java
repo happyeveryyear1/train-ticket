@@ -32,6 +32,7 @@ public class StationServiceImpl implements StationService {
             station.setStayTime(station.getStayTime());
             repository.save(station);
             StationServiceImpl.LOGGER.error("[create][Create station error][Already exists][StationId: {}]",station.getId());
+            StationServiceImpl.LOGGER.error("[create][Create station error][Already exists][StationId: {}]",station.getId());
             return new Response<>(1, "Create success", station);
         }
         StationServiceImpl.LOGGER.error("[create][Create station error][Already exists][StationId: {}]",station.getId());
@@ -60,6 +61,7 @@ public class StationServiceImpl implements StationService {
             station.setName(info.getName());
             station.setStayTime(info.getStayTime());
             repository.save(station);
+            StationServiceImpl.LOGGER.error("[update][Update station error][Station not found][StationId: {}]",info.getId());
             return new Response<>(1, "Update success", station);
         }
     }

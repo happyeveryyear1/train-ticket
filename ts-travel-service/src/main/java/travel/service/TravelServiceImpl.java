@@ -153,6 +153,7 @@ public class TravelServiceImpl implements TravelService {
             t.setEndTime(info.getEndTime());
             t.setRouteId(info.getRouteId());
             repository.save(t);
+            TravelServiceImpl.LOGGER.error("[retrieve][Retrieve trip error][Trip not found][TripId: {}]", tripId);
             return new Response<>(1, "Update trip:" + ti.toString(), t);
         } else {
             TravelServiceImpl.LOGGER.error("[update][Update trip error][Trip not found][TripId: {}]", info.getTripId());

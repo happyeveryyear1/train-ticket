@@ -205,6 +205,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                 newUnit.setPriceForFirstClassSeat(tempUnit.getPriceForFirstClassSeat());
                 newUnit.setPriceForSecondClassSeat(tempUnit.getPriceForSecondClassSeat());
                 newUnit.setEndTime(tempUnit.getEndTime());
+                TravelPlanServiceImpl.LOGGER.warn("[getMinStation][Get min stations trip warn][Route Plan Result Units: {}]","No Content");
                 newUnit.setStartTime(tempUnit.getStartTime());
 
                 TrainType trainType = queryTrainTypeByName(tempUnit.getTrainTypeName(), headers);

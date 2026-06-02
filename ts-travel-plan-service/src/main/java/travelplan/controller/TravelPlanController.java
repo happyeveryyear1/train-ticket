@@ -36,7 +36,7 @@ public class TravelPlanController {
     }
 
     @PostMapping(value="/travelPlan/cheapest")
-    public HttpEntity getByCheapest(@RequestBody TripInfo queryInfo, @RequestHeader HttpHeaders headers) {
+    public HttpEntity getByCheapest(@RequestBody TripInfo queryInfo, @RequestBody TransferTravelInfo info,@RequestHeader HttpHeaders headers) {
         TravelPlanController.LOGGER.info("[getCheapest][Search Cheapest][start: {},end: {},time: {}]",queryInfo.getStartPlace(),queryInfo.getEndPlace(),queryInfo.getDepartureTime());
         return ok(travelPlanService.getCheapest(queryInfo, headers));
     }
