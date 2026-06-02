@@ -334,6 +334,9 @@ public class TravelServiceImpl implements TravelService {
             return responses;
         }
 
+
+        TravelServiceImpl.LOGGER.info("[getTicketsByBatch][Ts-basic-service response status is 0][response is: {}]", r);
+
         List<Travel> infos = new ArrayList<>();
         Map<String, Trip> tripMap = new HashMap<>();
         for(Trip trip: trips){
@@ -418,6 +421,12 @@ public class TravelServiceImpl implements TravelService {
         query.setDepartureTime(departureTime1);
         TravelResult resultForTravel = JsonUtils.conveterObject(re.getBody().getData(), TravelResult.class);
 
+
+        query.setTrip(trip2);
+        query.setStartPlace(startPlaceName2);
+        query.setEndPlace(endPlaceName2);
+        query.setDepartureTime(departureTime2);
+
         //Set the returned ticket information
         return setResponse(trip, resultForTravel, startPlaceName, endPlaceName, departureTime, headers);
     }
@@ -427,6 +436,9 @@ public class TravelServiceImpl implements TravelService {
         TripResponse response = new TripResponse();
         response.setConfortClass(50);
         response.setEconomyClass(50);
+
+        response.setStartStation(startPlaceName2);
+        response.setTerminalStation(endPlaceName2);
 
         Route route = tr.getRoute();
         List<String> stationList = route.getStations();
