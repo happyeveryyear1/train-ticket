@@ -366,7 +366,7 @@ public class TravelServiceImpl implements TravelService {
             TravelServiceImpl.LOGGER.warn("[getTicketsByBatch][Ts-basic-service convert data failed][Fail msg: {}]", e.getMessage());
             return responses;
         }
-
+        TravelServiceImpl.LOGGER.warn("[getTicketsByBatch][Ts-basic-service convert data failed][Fail msg: {}]", e.getMessage());
         for(Map.Entry<String, TravelResult> trEntry: trMap.entrySet()){
             //Set the returned ticket information
             String tripNumber = trEntry.getKey();
@@ -383,6 +383,7 @@ public class TravelServiceImpl implements TravelService {
 
         //Determine if the date checked is the same day and after
         if (!afterToday(departureTime)) {
+            TravelServiceImpl.LOGGER.info("[getTickets][depaturetime not vailid][departuretime: {}]", departureTime);
             TravelServiceImpl.LOGGER.info("[getTickets][depaturetime not vailid][departuretime: {}]", departureTime);
             return null;
         }
@@ -452,6 +453,7 @@ public class TravelServiceImpl implements TravelService {
         int distanceStart = route.getDistances().get(indexStart) - route.getDistances().get(0);
         int distanceEnd = route.getDistances().get(indexEnd) - route.getDistances().get(0);
         TrainType trainType = tr.getTrainType();
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
         //Train running time is calculated according to the average running speed of the train
         int minutesStart = 60 * distanceStart / trainType.getAverageSpeed();
         int minutesEnd = 60 * distanceEnd / trainType.getAverageSpeed();
