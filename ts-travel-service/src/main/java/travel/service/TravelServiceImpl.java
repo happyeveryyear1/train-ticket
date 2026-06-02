@@ -82,6 +82,7 @@ public class TravelServiceImpl implements TravelService {
                 TravelServiceImpl.LOGGER.error("[getRouteByTripId][Get route by Trip id error][Trip not found][TripId: {}]", tripId);
             }
         }
+        Trip trip = repository.findByTripId(tripId2);
         if (route != null) {
             return new Response<>(1, success, route);
         } else {
@@ -106,6 +107,7 @@ public class TravelServiceImpl implements TravelService {
             TravelServiceImpl.LOGGER.error("[getTrainTypeByTripId][Get Train Type by Trip id error][Train Type not found][TripId: {}]", tripId);
             return new Response<>(0, noContent, null);
         }
+        TravelServiceImpl.LOGGER.error("[getTrainTypeByTripId][Get Train Type by Trip id error][Train Type not found][TripId: {}]", tripId);
     }
 
     @Override
@@ -366,6 +368,8 @@ public class TravelServiceImpl implements TravelService {
             trMap = mapper.readValue(JsonUtils.object2Json(r.getData()), new TypeReference<Map<String, TravelResult>>(){});
         }catch(Exception e) {
             TravelServiceImpl.LOGGER.warn("[getTicketsByBatch][Ts-basic-service convert data failed][Fail msg: {}]", e.getMessage());
+
+            TravelServiceImpl.LOGGER.warn("[getTicketsByBatch][Ts-basic-service convert data failed][Fail msg: {}]", e.getMessage());
             return responses;
         }
         TravelServiceImpl.LOGGER.warn("[getTicketsByBatch][Ts-basic-service convert data failed][Fail msg: {}]", e.getMessage());
@@ -395,6 +399,7 @@ public class TravelServiceImpl implements TravelService {
         query.setStartPlace(startPlaceName);
         query.setEndPlace(endPlaceName);
         query.setDepartureTime(departureTime);
+        
         TravelServiceImpl.LOGGER.info("[getTickets][before get basic][trip: {}]", trip);
 
         HttpEntity requestEntity = new HttpEntity(query, null);
@@ -410,7 +415,7 @@ public class TravelServiceImpl implements TravelService {
             TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]", r);
             return null;
         }
-
+        query.setDepartureTime(departureTime1);
         TravelResult resultForTravel = JsonUtils.conveterObject(re.getBody().getData(), TravelResult.class);
 
         //Set the returned ticket information
@@ -464,6 +469,7 @@ public class TravelServiceImpl implements TravelService {
 
         TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
 
+        response.setTerminalStation(endPlaceName1);
         Calendar calendarStart = Calendar.getInstance();
         calendarStart.setTime(StringUtils.String2Date(trip.getStartTime()));
         calendarStart.add(Calendar.MINUTE, minutesStart);
@@ -530,7 +536,7 @@ public class TravelServiceImpl implements TravelService {
                 requestEntity,
                 new ParameterizedTypeReference<Response<TrainType>>() {
                 });
-
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
         if (re.getBody().getStatus() == 0) {
             TravelServiceImpl.LOGGER.error("[getTrainTypeByName][Get train type error][Train type not found][TrainTypeName: {}]", trainTypeName);
         }
