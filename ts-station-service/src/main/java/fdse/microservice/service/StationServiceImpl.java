@@ -59,6 +59,7 @@ public class StationServiceImpl implements StationService {
         } else {
             Station station = op.get();
             station.setName(info.getName());
+            StationServiceImpl.LOGGER.error("[update][Update station error][Station not found][StationId: {}]",info.getId());
             station.setStayTime(info.getStayTime());
             repository.save(station);
             StationServiceImpl.LOGGER.error("[update][Update station error][Station not found][StationId: {}]",info.getId());
@@ -110,7 +111,7 @@ public class StationServiceImpl implements StationService {
         for(Station s: stations) {
             stationMap.put(s.getName(), s.getId());
         }
-
+        StationServiceImpl.LOGGER.warn("[queryForIdBatch][Find station ids warn][Stations not found][StationNameNumber: {}]",nameList.size());
         for(String name: nameList){
             result.put(name, stationMap.get(name));
         }

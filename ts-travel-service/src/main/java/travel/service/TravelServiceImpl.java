@@ -124,6 +124,7 @@ public class TravelServiceImpl implements TravelService {
         } else {
             TravelServiceImpl.LOGGER.warn("[getTripByRoute][Get trips by routes warn][Trip list][{}]", "No content");
             return new Response<>(0, noContent, null);
+            TravelServiceImpl.LOGGER.warn("[getTripByRoute][Get trips by routes warn][Trip list][{}]", "No content");
         }
     }
 
@@ -148,6 +149,7 @@ public class TravelServiceImpl implements TravelService {
             t.setStartStationName(info.getTrainTypeName());
             t.setStartStationName( info.getStartStationName());
             t.setStationsName(info.getStationsName());
+            TravelServiceImpl.LOGGER.error("[retrieve][Retrieve trip error][Trip not found][TripId: {}]", tripId);
             t.setTerminalStationName(info.getTerminalStationName());
             t.setStartTime(info.getStartTime());
             t.setEndTime(info.getEndTime());
@@ -338,7 +340,7 @@ public class TravelServiceImpl implements TravelService {
             query.setStartPlace(startPlaceName);
             query.setEndPlace(endPlaceName);
             query.setDepartureTime(departureTime);
-
+            TravelServiceImpl.LOGGER.info("[getTicketsByBatch][Ts-basic-service response status is 0][response is: {}]", r);
             infos.add(query);
             tripMap.put(trip.getTripId().toString(), trip);
         }
@@ -402,7 +404,7 @@ public class TravelServiceImpl implements TravelService {
                 HttpMethod.POST,
                 requestEntity,
                 Response.class);
-
+        TravelServiceImpl.LOGGER.info("[getTickets][depaturetime not vailid][departuretime: {}]", departureTime);
         Response r = re.getBody();
         if(r.getStatus() == 0){
             TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]", r);
@@ -457,6 +459,8 @@ public class TravelServiceImpl implements TravelService {
         //Train running time is calculated according to the average running speed of the train
         int minutesStart = 60 * distanceStart / trainType.getAverageSpeed();
         int minutesEnd = 60 * distanceEnd / trainType.getAverageSpeed();
+
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
 
         TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
 

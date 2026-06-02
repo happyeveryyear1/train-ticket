@@ -88,7 +88,7 @@ public class TravelController {
 
     @CrossOrigin(origins = "*")
     @PutMapping(value = "/trips")
-    public HttpEntity updateTrip(@RequestBody TravelInfo info, @RequestHeader HttpHeaders headers) {
+    public HttpEntity updateTrip(@RequestBody TravelInfo info, @RequestBody Trip trip,@RequestHeader HttpHeaders headers) {
         // Trip
         TravelController.LOGGER.info("[update][Update trip][TripId: {}]", info.getTripId());
         return ok(travelService.update(info, headers));
@@ -96,7 +96,7 @@ public class TravelController {
 
     @CrossOrigin(origins = "*")
     @DeleteMapping(value = "/trips/{tripId}")
-    public HttpEntity deleteTrip(@PathVariable String tripId, @RequestBody Trip trip,@RequestBody Trip trip1,@RequestHeader HttpHeaders headers) {
+    public HttpEntity deleteTrip(@PathVariable String tripId, @RequestBody Trip trip,@RequestBody Trip trip1,@RequestBody Trip trip2,@RequestBody Trip trip3,@RequestHeader HttpHeaders headers) {
         // string
         TravelController.LOGGER.info("[delete][Delete trip][TripId: {}]", tripId);
         return ok(travelService.delete(tripId, headers));
@@ -111,7 +111,7 @@ public class TravelController {
      */
     @CrossOrigin(origins = "*")
     @PostMapping(value = "/trips/left")
-    public HttpEntity queryInfo(@RequestBody TripInfo info, @RequestBody Trip trip, @PathVariable String tripId1, @PathVariable String tripId2,@PathVariable String tripId3, @RequestHeader HttpHeaders headers) {
+    public HttpEntity queryInfo(@RequestBody TripInfo info, @RequestBody Trip trip, @PathVariable String tripId1, @PathVariable String tripId2,@PathVariable String tripId3,@PathVariable String tripId4, @PathVariable String tripId5, @RequestHeader HttpHeaders headers) {
         if (info.getStartPlace() == null || info.getStartPlace().length() == 0 ||
                 info.getEndPlace() == null || info.getEndPlace().length() == 0 ||
                 info.getDepartureTime() == null ) {
