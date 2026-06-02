@@ -448,7 +448,7 @@ public class TravelServiceImpl implements TravelService {
 
         int indexStart1 = route.getStations().indexOf(startPlaceName);
         int indexEnd1 = route.getStations().indexOf(endPlaceName);
-
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
         int distanceStart = route.getDistances().get(indexStart) - route.getDistances().get(0);
         int distanceEnd = route.getDistances().get(indexEnd) - route.getDistances().get(0);
         TrainType trainType = tr.getTrainType();
@@ -542,6 +542,7 @@ public class TravelServiceImpl implements TravelService {
                 Response.class);
         Response routeRes = re.getBody();
         TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
         Route route1 = new Route();
         TravelServiceImpl.LOGGER.info("[getRouteByRouteId][Get Route By Id][Routes Response is : {}]", routeRes.toString());
         if (routeRes.getStatus() == 1) {
@@ -561,8 +562,8 @@ public class TravelServiceImpl implements TravelService {
         seatRequest.setSeatType(seatType);
         seatRequest.setTotalNum(totalNum);
         seatRequest.setStations(stationList);
-
-        TravelServiceImpl.LOGGER.info("[getRestTicketNumber][Seat request][request: {}]", seatRequest.toString());
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
+        TraTravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
 
         HttpEntity requestEntity = new HttpEntity(seatRequest, null);
         String seat_service_url = getServiceUrl("ts-seat-service");
