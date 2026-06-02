@@ -42,7 +42,7 @@ public class TravelPlanController {
     }
 
     @PostMapping(value="/travelPlan/quickest")
-    public HttpEntity getByQuickest(@RequestBody TripInfo queryInfo, @RequestHeader HttpHeaders headers) {
+    public HttpEntity getByQuickest(@RequestBody TripInfo queryInfo, @RequestBody TransferTravelInfo info,@RequestHeader HttpHeaders headers) {
         TravelPlanController.LOGGER.info("[getQuickest][Search Quickest][start: {},end: {},time: {}]",queryInfo.getStartPlace(),queryInfo.getEndPlace(),queryInfo.getDepartureTime());
         return ok(travelPlanService.getQuickest(queryInfo, headers));
     }

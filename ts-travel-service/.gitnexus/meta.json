@@ -1,0 +1,13 @@
+{
+  "repoPath": "C:\\ApiTest\\CodeStaticAnalysis\\CIATest\\train-ticket\\ts-travel-service",
+  "lastCommit": "",
+  "indexedAt": "2026-05-26T03:33:29.985Z",
+  "stats": {
+    "files": 19,
+    "nodes": 315,
+    "edges": 825,
+    "communities": 13,
+    "processes": 27,
+    "embeddings": 0
+  }
+}

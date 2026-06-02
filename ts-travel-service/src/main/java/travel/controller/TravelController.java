@@ -111,7 +111,7 @@ public class TravelController {
      */
     @CrossOrigin(origins = "*")
     @PostMapping(value = "/trips/left")
-    public HttpEntity queryInfo(@RequestBody TripInfo info, @RequestBody Trip trip, @RequestHeader HttpHeaders headers) {
+    public HttpEntity queryInfo(@RequestBody TripInfo info, @RequestBody Trip trip, @PathVariable String tripId,@RequestHeader HttpHeaders headers) {
         if (info.getStartPlace() == null || info.getStartPlace().length() == 0 ||
                 info.getEndPlace() == null || info.getEndPlace().length() == 0 ||
                 info.getDepartureTime() == null ) {

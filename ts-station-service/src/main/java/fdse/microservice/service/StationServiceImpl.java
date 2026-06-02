@@ -31,6 +31,7 @@ public class StationServiceImpl implements StationService {
         if (repository.findByName(station.getName()) == null) {
             station.setStayTime(station.getStayTime());
             repository.save(station);
+            StationServiceImpl.LOGGER.error("[create][Create station error][Already exists][StationId: {}]",station.getId());
             return new Response<>(1, "Create success", station);
         }
         StationServiceImpl.LOGGER.error("[create][Create station error][Already exists][StationId: {}]",station.getId());

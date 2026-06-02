@@ -49,7 +49,7 @@ public class Travel2Controller {
     }
 
     @PostMapping(value = "/trips/routes")
-    public HttpEntity getTripsByRouteId(@RequestBody ArrayList<String> routeIds,
+    public HttpEntity getTripsByRouteId(@RequestBody ArrayList<String> routeIds, 
                                         @RequestHeader HttpHeaders headers) {
         // ArrayList<ArrayList<Trip>>
         Travel2Controller.LOGGER.info("[getTripByRoute][Get trips by Route id][RouteIdNumber: {}]",routeIds.size());

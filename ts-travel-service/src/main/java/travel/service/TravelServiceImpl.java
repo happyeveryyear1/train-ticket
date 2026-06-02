@@ -117,6 +117,7 @@ public class TravelServiceImpl implements TravelService {
                 tempTripList = new ArrayList<>();
             }
             tripList.add(tempTripList);
+            TravelServiceImpl.LOGGER.warn("[getTripByRoute][Get trips by routes warn][Trip list][{}]", "No content");
         }
         if (!tripList.isEmpty()) {
             return new Response<>(1, success, tripList);

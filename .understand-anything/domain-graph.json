@@ -1,0 +1,1171 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "Train Ticket",
+    "languages": ["Java", "JavaScript", "Python"],
+    "frameworks": ["Spring Boot", "Spring Cloud Gateway", "Spring Cloud Alibaba", "Maven"],
+    "description": "Microservice-based train ticket booking system with 42 microservices covering user authentication, train travel search, order reservation & payment, food catering, admin management, and infrastructure support.",
+    "analyzedAt": "2026-05-26T07:00:00.000Z",
+    "gitCommitHash": "a1fcfbada0bd3b5587843766d0ebe0ade5ccc60c"
+  },
+  "nodes": [
+    {
+      "id": "domain:user-authentication",
+      "type": "domain",
+      "name": "User Authentication",
+      "summary": "Handles user identity registration, login authentication, JWT token issuance and validation, and captcha-based identity verification. Serves as the security gateway for all other microservices in the system.",
+      "tags": ["authentication", "authorization", "jwt", "security", "user-management"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entities": ["User", "JWT Token", "Verification Code"],
+        "businessRules": ["Passwords must be encoded with BCrypt before storage", "JWT tokens must be validated on every authenticated request", "Users must have unique usernames", "All protected endpoints require a valid Authorization header"],
+        "crossDomainInteractions": ["Provides JWT identity tokens consumed by all other services", "User entities are referenced by order, food, and admin services", "Auth service manages user lifecycle that impacts all downstream domains"]
+      }
+    },
+    {
+      "id": "domain:train-travel-search",
+      "type": "domain",
+      "name": "Train Travel Search",
+      "summary": "Manages the full catalog of train routes, station information, train types, seat availability, and travel schedules. Provides query APIs for searching direct and transfer routes, computing cheapest and quickest journey options, and planning multi-segment trips.",
+      "tags": ["travel", "route", "station", "seat", "trip-planning", "search"],
+      "complexity": "complex",
+      "domainMeta": {
+        "entities": ["Route", "RouteInfo", "Trip", "Travel", "TripAllDetail", "AdminTrip", "TrainType", "Station", "Seat"],
+        "businessRules": ["High-speed rail (travel) and regular train (travel2) follow separate scheduling rules", "Route planning must compute direct, transfer, cheapest, and quickest options", "Seat availability must be checked before reservation", "Station names are normalized to lowercase for consistency"],
+        "crossDomainInteractions": ["Travel search results are the primary input for order reservation", "Admin management services control route and travel CRUD operations", "Route and station data is consumed by food catering for delivery zone matching"]
+      }
+    },
+    {
+      "id": "domain:order-management",
+      "type": "domain",
+      "name": "Order and Reservation Management",
+      "summary": "Orchestrates the complete ticket purchasing lifecycle: reservation via message queue, order creation, price computation, payment processing (including account balance management), ticket cancellation with refund, rebooking to alternate trips, waitlist ordering, insurance purchase, luggage consignment, and final ticket execution.",
+      "tags": ["order", "reservation", "payment", "cancellation", "rebooking", "consignment", "insurance", "pricing"],
+      "complexity": "complex",
+      "domainMeta": {
+        "entities": ["Order", "OrderInfo", "OrderAlterInfo", "Payment", "Money", "AccountInfo", "PaymentInfo", "WaitListOrder", "PriceConfig", "Assurance", "AssuranceType", "Ticket"],
+        "businessRules": ["Reservation requests are queued via RabbitMQ for ordered processing", "Order price must be computed before payment can proceed", "Payment must deduct from user account balance before order is confirmed", "Cancellation refund amount depends on timing relative to departure", "Rebooking creates a new order and cancels the original", "Waitlist orders activate in FIFO order when inventory becomes available"],
+        "crossDomainInteractions": ["Reserves seats from the travel search domain", "Requires authenticated user identity from user-authentication domain", "Order status changes trigger notifications via infrastructure-support domain", "Admin management domain provides order oversight and manual intervention capability"]
+      }
+    },
+    {
+      "id": "domain:food-catering",
+      "type": "domain",
+      "name": "Food and Catering Services",
+      "summary": "Manages the onboard and station food ordering experience: browsing train food menus and station food stores, placing food orders matched to specific trips and delivery stations, and orchestrating food delivery logistics through RabbitMQ-based messaging between food, delivery, and notification services.",
+      "tags": ["food", "catering", "delivery", "train-food", "station-food", "rabbitmq"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entities": ["FoodOrder", "AllTripFood", "TrainFood", "StationFoodStore", "FoodDeliveryOrder", "DeliveryInfo", "SeatInfo", "StationFoodStoreInfo", "TripOrderInfo"],
+        "businessRules": ["Food orders must be linked to a valid trip and seat", "Station food delivery zone must match the order's delivery station", "Food orders trigger asynchronous delivery workflow via RabbitMQ", "Delivery status is tracked through the delivery lifecycle"],
+        "crossDomainInteractions": ["Depends on travel search domain for trip, seat, and station data", "Depends on order-management domain for valid ticket/trip context", "Uses RabbitMQ for asynchronous communication with delivery service", "Food order updates trigger notifications via infrastructure-support domain"]
+      }
+    },
+    {
+      "id": "domain:admin-management",
+      "type": "domain",
+      "name": "Admin Management",
+      "summary": "Provides administrative oversight of the entire system through REST APIs: managing user accounts, monitoring and modifying orders, maintaining route and travel catalogs, configuring pricing information, and controlling basic system settings. Serves as the backend powering the admin dashboard frontend.",
+      "tags": ["admin", "management", "dashboard", "oversight"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entities": ["UserDto", "Order (admin view)", "Route (admin view)", "Travel (admin view)", "PriceInfo"],
+        "businessRules": ["Admin operations require elevated privileges", "Admin can view and modify all users' orders", "Route and travel data created by admin feed the travel search catalog", "Admin pricing config affects all order computations"],
+        "crossDomainInteractions": ["Manages user accounts in user-authentication domain", "Oversees and modifies orders in order-management domain", "Controls route and travel data used by train-travel-search domain", "Configures pricing that affects order-management domain"]
+      }
+    },
+    {
+      "id": "domain:infrastructure-support",
+      "type": "domain",
+      "name": "Infrastructure and Support Services",
+      "summary": "Provides cross-cutting infrastructure capabilities: centralized configuration management for all microservices, email notification delivery for system events (order confirmations, cancellations, delivery updates), and ticket office operations. Acts as the operational backbone that keeps all business domains connected and informed.",
+      "tags": ["infrastructure", "config", "notification", "email", "support"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entities": ["Config", "Mail", "NotifyInfo"],
+        "businessRules": ["Configuration values are centrally managed and distributed", "Notifications are triggered by domain events via RabbitMQ", "Email notifications are composed and dispatched via SMTP", "Ticket office provides offline/alternative ticket operations"],
+        "crossDomainInteractions": ["Receives event messages from order-management and food-catering domains via RabbitMQ", "Provides configuration values consumed by all other microservices", "Dispatches email notifications for order, payment, and delivery events"]
+      }
+    },
+    {
+      "id": "flow:user-registration",
+      "type": "flow",
+      "name": "User Registration",
+      "summary": "Registers a new user account by validating input uniqueness, encoding the password, and persisting the user entity for subsequent authentication.",
+      "tags": ["registration", "signup", "user-creation"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/users/signup",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:user-login",
+      "type": "flow",
+      "name": "User Login",
+      "summary": "Authenticates a user by verifying credentials against stored records and issues a signed JWT bearer token for accessing protected resources across all microservices.",
+      "tags": ["login", "authentication", "jwt"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/users/login",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:identity-verification",
+      "type": "flow",
+      "name": "Identity Verification",
+      "summary": "Generates and validates captcha-based verification codes to confirm user identity during registration and sensitive operations, preventing automated abuse.",
+      "tags": ["captcha", "verification-code", "identity"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/verify-code/generate",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:token-management",
+      "type": "flow",
+      "name": "Token Management",
+      "summary": "Intercepts every authenticated HTTP request to extract, validate, and refresh JWT tokens, establishing the security context used by downstream business logic.",
+      "tags": ["jwt", "token", "filter", "security"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "JWT Authentication Filter (per-request interceptor)",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:route-query",
+      "type": "flow",
+      "name": "Route Query",
+      "summary": "Manages the full lifecycle of train route data: listing all available routes, fetching individual route details, creating new routes, updating existing routes, and deleting obsolete routes from the catalog.",
+      "tags": ["route", "query", "catalog"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/routeservice/routes",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:travel-search",
+      "type": "flow",
+      "name": "Travel Search",
+      "summary": "Searches for train travel options by querying trips based on route and departure date, returning detailed travel information including train type, station stops, and departure/arrival times.",
+      "tags": ["travel", "search", "trip", "schedule"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/travelservice/trips",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:trip-planning",
+      "type": "flow",
+      "name": "Trip Planning",
+      "summary": "Computes optimal journey options by searching for direct routes, transfer routes, the cheapest available itinerary, and the quickest travel path, aggregating results from multiple travel and route services.",
+      "tags": ["trip-planning", "transfer", "optimization"],
+      "complexity": "complex",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/travelplanservice/travelPlan",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:seat-management",
+      "type": "flow",
+      "name": "Seat Management",
+      "summary": "Queries real-time seat availability for specific trips, assigns seats to confirmed reservations, and releases seats back to the pool upon cancellation or expiration.",
+      "tags": ["seat", "availability", "assignment"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/seatservice/seats",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:ticket-reservation",
+      "type": "flow",
+      "name": "Ticket Reservation",
+      "summary": "Processes a ticket reservation request by validating order data, checking seat availability, enqueueing the request through RabbitMQ for ordered processing, creating the reservation record, and triggering the payment flow.",
+      "tags": ["reservation", "preserve", "rabbitmq", "booking"],
+      "complexity": "complex",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/preserveservice/preserve",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:order-creation",
+      "type": "flow",
+      "name": "Order Creation",
+      "summary": "Creates a ticket order record after successful reservation, computing the final price based on route distance, train type, seat class, and any applicable insurance or consignment fees before persisting the order entity.",
+      "tags": ["order", "creation", "pricing"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/orderservice/orders",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:payment-processing",
+      "type": "flow",
+      "name": "Payment Processing",
+      "summary": "Processes ticket payment by querying the order amount, deducting from the user's account balance, recording the payment transaction, updating the order status to paid, and triggering ticket execution.",
+      "tags": ["payment", "account", "balance", "transaction"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/paymentservice/payment",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:order-cancellation",
+      "type": "flow",
+      "name": "Order Cancellation",
+      "summary": "Cancels a confirmed ticket order by looking up the current order status, computing the applicable refund amount (potentially with penalty based on timing), reversing the payment, releasing the reserved seat, and updating the order record to cancelled status.",
+      "tags": ["cancellation", "refund", "release"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/cancelservice/cancel",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:ticket-rebooking",
+      "type": "flow",
+      "name": "Ticket Rebooking",
+      "summary": "Rebooks an existing ticket to a different trip by validating eligibility, searching for alternative trips on the target date, computing the price difference, and creating an exchange order that replaces the original.",
+      "tags": ["rebooking", "exchange", "modification"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/rebookservice/rebook",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:food-menu-query",
+      "type": "flow",
+      "name": "Food Menu Query",
+      "summary": "Browses available food options by listing train food items for specific trains, station food stores at given stations, and food items available for delivery at planned trip stops.",
+      "tags": ["food", "menu", "query", "browse"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/foodservice/foods",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:food-order-creation",
+      "type": "flow",
+      "name": "Food Order Creation",
+      "summary": "Places a food order by validating the order against the trip context, matching it to the correct delivery station, persisting the food order record, and sending an asynchronous notification to the delivery service via RabbitMQ.",
+      "tags": ["food-order", "ordering", "rabbitmq"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "POST /api/v1/foodservice/orders",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:food-delivery",
+      "type": "flow",
+      "name": "Food Delivery",
+      "summary": "Orchestrates the end-to-end food delivery process: receiving delivery notifications from the food service via RabbitMQ, assigning delivery routes matched to station stops, tracking delivery status through the fulfillment lifecycle, and marking orders as delivered.",
+      "tags": ["food-delivery", "fulfillment", "rabbitmq"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "RabbitMQ delivery queue message",
+        "entryType": "event"
+      }
+    },
+    {
+      "id": "flow:admin-user-management",
+      "type": "flow",
+      "name": "Admin User Management",
+      "summary": "Administers user accounts through privileged APIs: listing all registered users, creating new user accounts, modifying user profile information, and deleting user accounts from the system.",
+      "tags": ["admin", "user-management", "crud"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/adminuserservice/users",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:admin-order-management",
+      "type": "flow",
+      "name": "Admin Order Management",
+      "summary": "Provides administrative oversight of all ticket orders: querying the complete order database, manually updating order statuses when needed, and removing invalid or test order records.",
+      "tags": ["admin", "order", "oversight"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/adminorderservice/orders",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:admin-travel-management",
+      "type": "flow",
+      "name": "Admin Travel Management",
+      "summary": "Manages the train travel catalog from the admin perspective: listing all travel entries, adding new travel schedules, updating travel details (routes, times, train types), and deleting travel records to keep the catalog current.",
+      "tags": ["admin", "travel", "catalog", "crud"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/admintravelservice/admintravels",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:admin-route-management",
+      "type": "flow",
+      "name": "Admin Route Management",
+      "summary": "Administers the train route catalog: listing all configured routes, creating new route definitions with station sequences and distances, updating route information, and removing deprecated routes.",
+      "tags": ["admin", "route", "catalog", "crud"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/adminrouteservice/adminroutes",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:configuration-management",
+      "type": "flow",
+      "name": "Configuration Management",
+      "summary": "Centrally manages system configuration values used by all microservices: querying current config entries, creating or updating configuration key-value pairs, and removing obsolete configuration entries.",
+      "tags": ["config", "central-management", "key-value"],
+      "complexity": "simple",
+      "domainMeta": {
+        "entryPoint": "GET /api/v1/configservice/configs",
+        "entryType": "http"
+      }
+    },
+    {
+      "id": "flow:notification-delivery",
+      "type": "flow",
+      "name": "Notification Delivery",
+      "summary": "Processes outbound notifications triggered by system events: receiving event messages via RabbitMQ from order and delivery services, composing formatted email messages, dispatching emails through SMTP, and logging notification delivery results.",
+      "tags": ["notification", "email", "rabbitmq", "smtp"],
+      "complexity": "moderate",
+      "domainMeta": {
+        "entryPoint": "RabbitMQ notification queue message",
+        "entryType": "event"
+      }
+    },
+    {
+      "id": "step:user-registration:validate-input",
+      "type": "step",
+      "name": "Validate Registration Input",
+      "summary": "Validates that the username, password, and other required registration fields are present, non-empty, and meet format requirements before proceeding.",
+      "tags": ["validation", "input-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:user-registration:check-duplicate-username",
+      "type": "step",
+      "name": "Check Duplicate Username",
+      "summary": "Queries the user repository to verify that the requested username does not already exist, rejecting duplicate registrations.",
+      "tags": ["duplicate-check", "uniqueness"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:user-registration:encode-password",
+      "type": "step",
+      "name": "Encode Password",
+      "summary": "Encodes the plain-text password using BCrypt hashing before storage to ensure passwords are never stored in cleartext.",
+      "tags": ["password-encoding", "bcrypt", "security"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:user-registration:persist-user",
+      "type": "step",
+      "name": "Persist User Entity",
+      "summary": "Saves the validated and encoded user entity to the database through the UserRepository, making the account available for subsequent logins.",
+      "tags": ["persistence", "database", "create"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:user-login:authenticate-credentials",
+      "type": "step",
+      "name": "Authenticate Credentials",
+      "summary": "Looks up the user by username and verifies the supplied password against the stored BCrypt hash using Spring Security's authentication manager.",
+      "tags": ["authentication", "credential-check", "bcrypt"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:user-login:generate-jwt-token",
+      "type": "step",
+      "name": "Generate JWT Token",
+      "summary": "Creates a signed JSON Web Token containing the authenticated user's identity, roles, and expiration time using the JWTProvider service.",
+      "tags": ["jwt", "token-generation", "signing"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:user-login:return-token",
+      "type": "step",
+      "name": "Return Token and User Info",
+      "summary": "Returns the generated JWT token along with basic user profile information (username, userId) in the login response to the client.",
+      "tags": ["response", "token-delivery"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:identity-verification:generate-captcha",
+      "type": "step",
+      "name": "Generate Captcha Code",
+      "summary": "Generates a random verification code (numeric or alphanumeric) and associates it with the requesting user's session or identifier for later validation.",
+      "tags": ["captcha", "code-generation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:identity-verification:send-code",
+      "type": "step",
+      "name": "Send Verification Code",
+      "summary": "Delivers the generated verification code to the user through the configured channel (e.g., stored for later comparison or returned in a test/development environment).",
+      "tags": ["delivery", "code-sending"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:identity-verification:validate-code",
+      "type": "step",
+      "name": "Validate Verification Code",
+      "summary": "Compares the user-submitted verification code against the previously generated and stored code, confirming identity if they match and are within the validity window.",
+      "tags": ["validation", "code-comparison"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-management:extract-token",
+      "type": "step",
+      "name": "Extract Token from Header",
+      "summary": "Intercepts the incoming HTTP request and extracts the JWT bearer token from the Authorization header for validation.",
+      "tags": ["extraction", "http-header", "filter"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:token-management:validate-signature",
+      "type": "step",
+      "name": "Validate Token Signature",
+      "summary": "Verifies the JWT token's cryptographic signature using the configured signing key to ensure the token was issued by this system and has not been tampered with.",
+      "tags": ["signature-validation", "cryptography", "jwt"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:token-management:set-security-context",
+      "type": "step",
+      "name": "Set Security Context",
+      "summary": "Populates the Spring Security context with the authenticated user's principal and granted authorities, making the identity available to downstream controllers and services.",
+      "tags": ["security-context", "authentication", "spring-security"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:route-query:list-all-routes",
+      "type": "step",
+      "name": "List All Routes",
+      "summary": "Queries the RouteRepository to retrieve all configured train routes with their station sequences and returns them as a paginated or full list.",
+      "tags": ["query", "list", "read"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:route-query:get-route-by-id",
+      "type": "step",
+      "name": "Get Route by ID",
+      "summary": "Fetches detailed information for a single route identified by its route ID, including all intermediate stations, distances, and associated metadata.",
+      "tags": ["query", "detail", "read"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:route-query:create-or-update-route",
+      "type": "step",
+      "name": "Create or Update Route",
+      "summary": "Accepts route definition data (station sequence, distances, route name) and either inserts a new route or modifies an existing one in the route catalog.",
+      "tags": ["mutation", "create", "update"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:route-query:delete-route",
+      "type": "step",
+      "name": "Delete Route",
+      "summary": "Removes a route from the catalog by its route ID, ensuring no active trips reference the route before deletion.",
+      "tags": ["deletion", "remove"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:travel-search:query-by-route-and-date",
+      "type": "step",
+      "name": "Query Travel by Route and Date",
+      "summary": "Searches the TripRepository for travel options matching a specified route and departure date, filtering results to only show trips with available seats.",
+      "tags": ["search", "filter", "query"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:travel-search:query-by-trip-id",
+      "type": "step",
+      "name": "Query Travel by Trip ID",
+      "summary": "Fetches full travel details for a single trip identified by its unique TripId, including full station stop information and seat availability.",
+      "tags": ["detail", "lookup"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:travel-search:return-travel-details",
+      "type": "step",
+      "name": "Return Travel Details",
+      "summary": "Assembles the query results into a structured response containing trip information, train type, station stops with times, and available seat counts.",
+      "tags": ["response", "assembly"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:trip-planning:search-direct-routes",
+      "type": "step",
+      "name": "Search Direct Routes",
+      "summary": "Queries travel services for trips that go directly from the origin station to the destination station without any transfers.",
+      "tags": ["direct-route", "search"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:trip-planning:search-transfer-routes",
+      "type": "step",
+      "name": "Search Transfer Routes",
+      "summary": "Searches for multi-segment journeys requiring a transfer at an intermediate station, combining trip legs that together connect origin to destination.",
+      "tags": ["transfer", "multi-segment"],
+      "complexity": "complex"
+    },
+    {
+      "id": "step:trip-planning:identify-cheapest",
+      "type": "step",
+      "name": "Identify Cheapest Route",
+      "summary": "Compares all found routes (direct and transfer) by total price, selecting the lowest-cost option from the search results.",
+      "tags": ["cost-optimization", "cheapest"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:trip-planning:identify-quickest",
+      "type": "step",
+      "name": "Identify Quickest Route",
+      "summary": "Compares all found routes by total travel duration, selecting the option with the shortest combined travel time.",
+      "tags": ["time-optimization", "quickest"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:trip-planning:return-plan-result",
+      "type": "step",
+      "name": "Return Trip Plan Result",
+      "summary": "Aggregates all computed route options (direct, transfer, cheapest, quickest) into a unified trip plan response returned to the client.",
+      "tags": ["aggregation", "response"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:seat-management:query-availability",
+      "type": "step",
+      "name": "Query Seat Availability",
+      "summary": "Checks the current seat inventory for a specified trip and travel date, returning the count and types of remaining available seats.",
+      "tags": ["availability", "query", "inventory"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:seat-management:assign-seat",
+      "type": "step",
+      "name": "Assign Seat",
+      "summary": "Reserves a specific seat (by seat number and class) for a confirmed order, decrementing the available seat count for the associated trip.",
+      "tags": ["assignment", "reservation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:seat-management:release-seat",
+      "type": "step",
+      "name": "Release Seat",
+      "summary": "Returns a previously assigned seat back to the available inventory when an order is cancelled or a reservation expires without payment.",
+      "tags": ["release", "return"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:ticket-reservation:validate-order-request",
+      "type": "step",
+      "name": "Validate Reservation Request",
+      "summary": "Validates the reservation request payload to ensure all required fields (trip ID, seat class, passenger info, contact details) are present and well-formed.",
+      "tags": ["validation", "request-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:ticket-reservation:check-seat-availability",
+      "type": "step",
+      "name": "Check Seat Availability",
+      "summary": "Calls the seat service to verify that the requested seat class still has availability on the specified trip before proceeding with the reservation.",
+      "tags": ["availability", "seat-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:ticket-reservation:queue-reservation",
+      "type": "step",
+      "name": "Queue Reservation via RabbitMQ",
+      "summary": "Publishes the validated reservation request to a RabbitMQ queue for ordered, asynchronous processing to prevent overselling under concurrent load.",
+      "tags": ["queue", "rabbitmq", "async"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:ticket-reservation:create-reservation-record",
+      "type": "step",
+      "name": "Create Reservation Record",
+      "summary": "Consumes the queued reservation message and persists a reservation record with status pending, linking it to the user, trip, and seat selection.",
+      "tags": ["persistence", "record-creation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:ticket-reservation:invoke-payment",
+      "type": "step",
+      "name": "Invoke Payment Flow",
+      "summary": "After successful reservation, triggers the payment processing flow by communicating the order amount and order ID to the payment service.",
+      "tags": ["payment-trigger", "handoff"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-creation:validate-order-data",
+      "type": "step",
+      "name": "Validate Order Data",
+      "summary": "Validates the order creation payload including passenger names, ID documents, contact info, and selected trip details.",
+      "tags": ["validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-creation:compute-price",
+      "type": "step",
+      "name": "Compute Order Price",
+      "summary": "Calculates the total order price based on route distance, train type pricing, seat class multiplier, and any additional charges for insurance or consignment.",
+      "tags": ["pricing", "calculation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:order-creation:persist-order",
+      "type": "step",
+      "name": "Persist Order Entity",
+      "summary": "Saves the fully constructed order record with computed price and initial status to the OrderRepository for the primary or secondary order service.",
+      "tags": ["persistence", "create"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-creation:return-confirmation",
+      "type": "step",
+      "name": "Return Order Confirmation",
+      "summary": "Returns the created order details including order ID, status, total price, and trip information as confirmation to the client.",
+      "tags": ["response", "confirmation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:payment-processing:query-order-amount",
+      "type": "step",
+      "name": "Query Order Amount",
+      "summary": "Retrieves the total payable amount for the order from the order service to determine how much to deduct from the user's account.",
+      "tags": ["query", "amount-retrieval"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:payment-processing:deduct-from-account",
+      "type": "step",
+      "name": "Deduct from Account",
+      "summary": "Debits the order amount from the user's account balance, validating sufficient funds are available before the deduction proceeds.",
+      "tags": ["deduction", "balance-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:payment-processing:record-transaction",
+      "type": "step",
+      "name": "Record Payment Transaction",
+      "summary": "Persists a payment transaction record with the deducted amount, timestamp, order reference, and resulting account balance as an audit trail.",
+      "tags": ["transaction", "audit", "record"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:payment-processing:update-order-status",
+      "type": "step",
+      "name": "Update Order Status to Paid",
+      "summary": "Updates the corresponding order's status from pending to paid upon successful payment, enabling subsequent ticket execution.",
+      "tags": ["status-update", "order"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:payment-processing:issue-ticket-execution",
+      "type": "step",
+      "name": "Issue Ticket Execution",
+      "summary": "Triggers the execute service to finalize the ticket, generating the final ticket record with seat assignment and making it available to the passenger.",
+      "tags": ["execution", "ticket-issuance"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-cancellation:lookup-order",
+      "type": "step",
+      "name": "Lookup Order Status",
+      "summary": "Retrieves the current order from the order repository to confirm it exists and is in a cancellable state (not already cancelled or executed beyond the refund window).",
+      "tags": ["lookup", "status-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-cancellation:compute-refund",
+      "type": "step",
+      "name": "Compute Refund Amount",
+      "summary": "Calculates the refund amount based on the order price, applying any cancellation penalty rules that depend on how far in advance of departure the cancellation occurs.",
+      "tags": ["refund-calculation", "penalty"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:order-cancellation:reverse-payment",
+      "type": "step",
+      "name": "Reverse Payment",
+      "summary": "Credits the computed refund amount back to the user's account balance, creating a reversal transaction record in the payment system.",
+      "tags": ["refund", "credit", "reversal"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-cancellation:release-seat",
+      "type": "step",
+      "name": "Release Reserved Seat",
+      "summary": "Calls the seat service to release the previously reserved seat back into the available inventory for the trip.",
+      "tags": ["seat-release", "inventory"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:order-cancellation:update-to-cancelled",
+      "type": "step",
+      "name": "Update Order to Cancelled",
+      "summary": "Updates the order status to cancelled and records the cancellation timestamp and refund amount in the order record.",
+      "tags": ["status-update", "finalization"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:ticket-rebooking:validate-eligibility",
+      "type": "step",
+      "name": "Validate Rebook Eligibility",
+      "summary": "Checks that the original order is in a paid/confirmed state, has not already been rebooked, and is within the allowed rebooking window before departure.",
+      "tags": ["eligibility", "validation"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:ticket-rebooking:search-alternatives",
+      "type": "step",
+      "name": "Search Alternative Trips",
+      "summary": "Queries the travel search services for available trips on the desired new travel date matching the same route or a compatible alternative.",
+      "tags": ["search", "alternatives"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:ticket-rebooking:compute-price-difference",
+      "type": "step",
+      "name": "Compute Price Difference",
+      "summary": "Calculates the price difference between the original ticket and the new trip, determining whether the user must pay additional amount or receive a partial refund.",
+      "tags": ["price-difference", "calculation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:ticket-rebooking:create-exchange-order",
+      "type": "step",
+      "name": "Create Exchange Order",
+      "summary": "Creates a new order for the replacement trip, links it to the original order for audit purposes, cancels the original order, and processes any net payment or refund.",
+      "tags": ["exchange", "order-creation", "linking"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:food-menu-query:list-train-foods",
+      "type": "step",
+      "name": "List Train Food Items",
+      "summary": "Queries the TrainFoodRepository for all food items available on a specific train, returning menu items with names, prices, and availability.",
+      "tags": ["query", "train-food", "menu"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-menu-query:list-station-stores",
+      "type": "step",
+      "name": "List Station Food Stores",
+      "summary": "Queries the StationFoodRepository for food stores located at a given station, returning store names, food types, and operating hours.",
+      "tags": ["query", "station-food", "store"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-menu-query:query-food-by-trip",
+      "type": "step",
+      "name": "Query Food by Trip",
+      "summary": "Aggregates all food options (train food and station food) available for a specific trip, based on the trip's route and scheduled station stops.",
+      "tags": ["query", "trip-context", "aggregation"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:food-order-creation:validate-food-order",
+      "type": "step",
+      "name": "Validate Food Order",
+      "summary": "Validates the food order request: checks that the selected food items exist, quantities are positive, and the order is linked to a valid trip and seat.",
+      "tags": ["validation", "order-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-order-creation:match-delivery-station",
+      "type": "step",
+      "name": "Match Delivery Station",
+      "summary": "Determines the optimal delivery station along the trip route where the food should be delivered, based on the food source and the trip's station stop schedule.",
+      "tags": ["station-matching", "delivery-planning"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:food-order-creation:persist-food-order",
+      "type": "step",
+      "name": "Persist Food Order",
+      "summary": "Saves the validated food order to the FoodOrderRepository with status pending, linking it to the trip, seat, delivery station, and ordered items.",
+      "tags": ["persistence", "create"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-order-creation:notify-delivery",
+      "type": "step",
+      "name": "Notify Delivery Service",
+      "summary": "Publishes a food delivery request message to RabbitMQ containing the order ID, delivery station, seat info, and trip details for the delivery service to process.",
+      "tags": ["notification", "rabbitmq", "publish"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-delivery:receive-notification",
+      "type": "step",
+      "name": "Receive Delivery Notification",
+      "summary": "Listens on the RabbitMQ delivery queue and consumes incoming food delivery requests, extracting order and delivery details from the message payload.",
+      "tags": ["rabbitmq", "consume", "receive"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-delivery:assign-delivery-route",
+      "type": "step",
+      "name": "Assign Delivery Route",
+      "summary": "Plans the delivery logistics by assigning a delivery route matched to the trip's station stops, ensuring the food reaches the correct station at the right time.",
+      "tags": ["routing", "assignment", "logistics"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:food-delivery:update-delivery-status",
+      "type": "step",
+      "name": "Update Delivery Status",
+      "summary": "Tracks the delivery through its lifecycle states (preparing, in-transit, delivered) by updating the FoodDeliveryOrder entity in the repository.",
+      "tags": ["status-tracking", "update"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:food-delivery:mark-fulfilled",
+      "type": "step",
+      "name": "Mark Order Fulfilled",
+      "summary": "Sets the final delivery status to fulfilled upon successful food delivery, completing the food order lifecycle.",
+      "tags": ["fulfillment", "completion"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-user-management:list-all-users",
+      "type": "step",
+      "name": "List All Users",
+      "summary": "Queries and returns a paginated list of all registered users with their profile details for administrative review.",
+      "tags": ["list", "query", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-user-management:create-user",
+      "type": "step",
+      "name": "Create New User",
+      "summary": "Creates a new user account through the admin API with specified profile data, bypassing the standard registration flow.",
+      "tags": ["create", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-user-management:update-user-profile",
+      "type": "step",
+      "name": "Update User Profile",
+      "summary": "Modifies an existing user's profile information including contact details and account settings through the admin interface.",
+      "tags": ["update", "modification", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-user-management:delete-user",
+      "type": "step",
+      "name": "Delete User Account",
+      "summary": "Removes a user account from the system, handling cascading effects on associated orders and records.",
+      "tags": ["delete", "removal", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-order-management:query-all-orders",
+      "type": "step",
+      "name": "Query All Orders",
+      "summary": "Retrieves the complete order database across all users with filtering by status, date range, and other criteria for administrative oversight.",
+      "tags": ["query", "list", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-order-management:update-order-status",
+      "type": "step",
+      "name": "Update Order Status",
+      "summary": "Manually modifies an order's status when manual intervention is required (e.g., resolving disputed payments, force-cancelling stuck orders).",
+      "tags": ["status-update", "intervention", "admin"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:admin-order-management:delete-order-record",
+      "type": "step",
+      "name": "Delete Order Record",
+      "summary": "Removes an erroneous or test order record from the system, ensuring referential integrity with related payment and seat records.",
+      "tags": ["delete", "cleanup", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-travel-management:query-all-travels",
+      "type": "step",
+      "name": "Query All Travels",
+      "summary": "Lists all travel entries in the system catalog with their associated routes, train types, departure times, and statuses.",
+      "tags": ["query", "list", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-travel-management:add-new-travel",
+      "type": "step",
+      "name": "Add New Travel",
+      "summary": "Creates a new travel schedule entry by specifying route, train type, departure/arrival times, and other travel parameters.",
+      "tags": ["create", "add", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-travel-management:update-travel-info",
+      "type": "step",
+      "name": "Update Travel Information",
+      "summary": "Modifies an existing travel entry's details such as departure time, train type assignment, or status.",
+      "tags": ["update", "modification", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-travel-management:delete-travel-record",
+      "type": "step",
+      "name": "Delete Travel Record",
+      "summary": "Removes a travel entry from the catalog, ensuring no active orders reference the deleted travel.",
+      "tags": ["delete", "removal", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-route-management:list-all-routes",
+      "type": "step",
+      "name": "List All Routes",
+      "summary": "Retrieves all configured train routes with their station sequences and distances for administrative viewing.",
+      "tags": ["list", "query", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-route-management:create-route",
+      "type": "step",
+      "name": "Create Route",
+      "summary": "Defines a new train route by specifying the ordered sequence of stations, station distances or travel times, and route metadata.",
+      "tags": ["create", "define", "admin"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "step:admin-route-management:update-route",
+      "type": "step",
+      "name": "Update Route",
+      "summary": "Modifies an existing route definition, adjusting station sequences, adding or removing stops, or updating distance/timing information.",
+      "tags": ["update", "modification", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:admin-route-management:delete-route",
+      "type": "step",
+      "name": "Delete Route",
+      "summary": "Removes a route definition from the system, ensuring no active travels or trips depend on the deleted route.",
+      "tags": ["delete", "removal", "admin"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:configuration-management:query-configs",
+      "type": "step",
+      "name": "Query Configuration Values",
+      "summary": "Retrieves all configuration entries or a specific configuration key from the centralized config repository.",
+      "tags": ["query", "read", "config"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:configuration-management:create-or-update-config",
+      "type": "step",
+      "name": "Create or Update Config",
+      "summary": "Inserts a new configuration key-value pair or updates an existing configuration entry with a new value.",
+      "tags": ["create", "update", "mutation", "config"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:configuration-management:delete-config",
+      "type": "step",
+      "name": "Delete Config Entry",
+      "summary": "Removes a configuration key and its value from the centralized config service when it is no longer needed.",
+      "tags": ["delete", "removal", "config"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:notification-delivery:receive-event",
+      "type": "step",
+      "name": "Receive Notification Event",
+      "summary": "Consumes event messages from the RabbitMQ notification queue triggered by order completions, cancellations, and delivery updates across the system.",
+      "tags": ["rabbitmq", "consume", "event"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:notification-delivery:compose-email",
+      "type": "step",
+      "name": "Compose Email Message",
+      "summary": "Formats the notification content into a structured email message with appropriate subject, body template, and recipient address derived from the event payload.",
+      "tags": ["email-composition", "formatting"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:notification-delivery:dispatch-mail",
+      "type": "step",
+      "name": "Dispatch via SMTP",
+      "summary": "Sends the composed email notification through the configured SMTP mail service to the intended recipient.",
+      "tags": ["smtp", "dispatch", "email"],
+      "complexity": "simple"
+    },
+    {
+      "id": "step:notification-delivery:log-result",
+      "type": "step",
+      "name": "Log Notification Result",
+      "summary": "Records the notification delivery outcome (success, failure, bounced) in the NotifyRepository for audit and troubleshooting purposes.",
+      "tags": ["logging", "audit", "persistence"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    { "source": "domain:user-authentication", "target": "flow:user-registration", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:user-authentication", "target": "flow:user-login", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:user-authentication", "target": "flow:identity-verification", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:user-authentication", "target": "flow:token-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:train-travel-search", "target": "flow:route-query", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:train-travel-search", "target": "flow:travel-search", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:train-travel-search", "target": "flow:trip-planning", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:train-travel-search", "target": "flow:seat-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:order-management", "target": "flow:ticket-reservation", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:order-management", "target": "flow:order-creation", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:order-management", "target": "flow:payment-processing", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:order-management", "target": "flow:order-cancellation", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:order-management", "target": "flow:ticket-rebooking", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:food-catering", "target": "flow:food-menu-query", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:food-catering", "target": "flow:food-order-creation", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:food-catering", "target": "flow:food-delivery", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:admin-management", "target": "flow:admin-user-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:admin-management", "target": "flow:admin-order-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:admin-management", "target": "flow:admin-travel-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:admin-management", "target": "flow:admin-route-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:infrastructure-support", "target": "flow:configuration-management", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+    { "source": "domain:infrastructure-support", "target": "flow:notification-delivery", "type": "contains_flow", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:user-registration", "target": "step:user-registration:validate-input", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:user-registration", "target": "step:user-registration:check-duplicate-username", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:user-registration", "target": "step:user-registration:encode-password", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:user-registration", "target": "step:user-registration:persist-user", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:user-login", "target": "step:user-login:authenticate-credentials", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:user-login", "target": "step:user-login:generate-jwt-token", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:user-login", "target": "step:user-login:return-token", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:identity-verification", "target": "step:identity-verification:generate-captcha", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:identity-verification", "target": "step:identity-verification:send-code", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:identity-verification", "target": "step:identity-verification:validate-code", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:token-management", "target": "step:token-management:extract-token", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:token-management", "target": "step:token-management:validate-signature", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:token-management", "target": "step:token-management:set-security-context", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:route-query", "target": "step:route-query:list-all-routes", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:route-query", "target": "step:route-query:get-route-by-id", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:route-query", "target": "step:route-query:create-or-update-route", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:route-query", "target": "step:route-query:delete-route", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:travel-search", "target": "step:travel-search:query-by-route-and-date", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:travel-search", "target": "step:travel-search:query-by-trip-id", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:travel-search", "target": "step:travel-search:return-travel-details", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:trip-planning", "target": "step:trip-planning:search-direct-routes", "type": "flow_step", "direction": "forward", "weight": 0.2 },
+    { "source": "flow:trip-planning", "target": "step:trip-planning:search-transfer-routes", "type": "flow_step", "direction": "forward", "weight": 0.4 },
+    { "source": "flow:trip-planning", "target": "step:trip-planning:identify-cheapest", "type": "flow_step", "direction": "forward", "weight": 0.6 },
+    { "source": "flow:trip-planning", "target": "step:trip-planning:identify-quickest", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:trip-planning", "target": "step:trip-planning:return-plan-result", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:seat-management", "target": "step:seat-management:query-availability", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:seat-management", "target": "step:seat-management:assign-seat", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:seat-management", "target": "step:seat-management:release-seat", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:ticket-reservation", "target": "step:ticket-reservation:validate-order-request", "type": "flow_step", "direction": "forward", "weight": 0.2 },
+    { "source": "flow:ticket-reservation", "target": "step:ticket-reservation:check-seat-availability", "type": "flow_step", "direction": "forward", "weight": 0.4 },
+    { "source": "flow:ticket-reservation", "target": "step:ticket-reservation:queue-reservation", "type": "flow_step", "direction": "forward", "weight": 0.6 },
+    { "source": "flow:ticket-reservation", "target": "step:ticket-reservation:create-reservation-record", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:ticket-reservation", "target": "step:ticket-reservation:invoke-payment", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:order-creation", "target": "step:order-creation:validate-order-data", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:order-creation", "target": "step:order-creation:compute-price", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:order-creation", "target": "step:order-creation:persist-order", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:order-creation", "target": "step:order-creation:return-confirmation", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:payment-processing", "target": "step:payment-processing:query-order-amount", "type": "flow_step", "direction": "forward", "weight": 0.2 },
+    { "source": "flow:payment-processing", "target": "step:payment-processing:deduct-from-account", "type": "flow_step", "direction": "forward", "weight": 0.4 },
+    { "source": "flow:payment-processing", "target": "step:payment-processing:record-transaction", "type": "flow_step", "direction": "forward", "weight": 0.6 },
+    { "source": "flow:payment-processing", "target": "step:payment-processing:update-order-status", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:payment-processing", "target": "step:payment-processing:issue-ticket-execution", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:order-cancellation", "target": "step:order-cancellation:lookup-order", "type": "flow_step", "direction": "forward", "weight": 0.2 },
+    { "source": "flow:order-cancellation", "target": "step:order-cancellation:compute-refund", "type": "flow_step", "direction": "forward", "weight": 0.4 },
+    { "source": "flow:order-cancellation", "target": "step:order-cancellation:reverse-payment", "type": "flow_step", "direction": "forward", "weight": 0.6 },
+    { "source": "flow:order-cancellation", "target": "step:order-cancellation:release-seat", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:order-cancellation", "target": "step:order-cancellation:update-to-cancelled", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:ticket-rebooking", "target": "step:ticket-rebooking:validate-eligibility", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:ticket-rebooking", "target": "step:ticket-rebooking:search-alternatives", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:ticket-rebooking", "target": "step:ticket-rebooking:compute-price-difference", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:ticket-rebooking", "target": "step:ticket-rebooking:create-exchange-order", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:food-menu-query", "target": "step:food-menu-query:list-train-foods", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:food-menu-query", "target": "step:food-menu-query:list-station-stores", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:food-menu-query", "target": "step:food-menu-query:query-food-by-trip", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:food-order-creation", "target": "step:food-order-creation:validate-food-order", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:food-order-creation", "target": "step:food-order-creation:match-delivery-station", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:food-order-creation", "target": "step:food-order-creation:persist-food-order", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:food-order-creation", "target": "step:food-order-creation:notify-delivery", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:food-delivery", "target": "step:food-delivery:receive-notification", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:food-delivery", "target": "step:food-delivery:assign-delivery-route", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:food-delivery", "target": "step:food-delivery:update-delivery-status", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:food-delivery", "target": "step:food-delivery:mark-fulfilled", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:admin-user-management", "target": "step:admin-user-management:list-all-users", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:admin-user-management", "target": "step:admin-user-management:create-user", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:admin-user-management", "target": "step:admin-user-management:update-user-profile", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:admin-user-management", "target": "step:admin-user-management:delete-user", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:admin-order-management", "target": "step:admin-order-management:query-all-orders", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:admin-order-management", "target": "step:admin-order-management:update-order-status", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:admin-order-management", "target": "step:admin-order-management:delete-order-record", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:admin-travel-management", "target": "step:admin-travel-management:query-all-travels", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:admin-travel-management", "target": "step:admin-travel-management:add-new-travel", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:admin-travel-management", "target": "step:admin-travel-management:update-travel-info", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:admin-travel-management", "target": "step:admin-travel-management:delete-travel-record", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:admin-route-management", "target": "step:admin-route-management:list-all-routes", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:admin-route-management", "target": "step:admin-route-management:create-route", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:admin-route-management", "target": "step:admin-route-management:update-route", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:admin-route-management", "target": "step:admin-route-management:delete-route", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:configuration-management", "target": "step:configuration-management:query-configs", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:configuration-management", "target": "step:configuration-management:create-or-update-config", "type": "flow_step", "direction": "forward", "weight": 0.7 },
+    { "source": "flow:configuration-management", "target": "step:configuration-management:delete-config", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "flow:notification-delivery", "target": "step:notification-delivery:receive-event", "type": "flow_step", "direction": "forward", "weight": 0.3 },
+    { "source": "flow:notification-delivery", "target": "step:notification-delivery:compose-email", "type": "flow_step", "direction": "forward", "weight": 0.5 },
+    { "source": "flow:notification-delivery", "target": "step:notification-delivery:dispatch-mail", "type": "flow_step", "direction": "forward", "weight": 0.8 },
+    { "source": "flow:notification-delivery", "target": "step:notification-delivery:log-result", "type": "flow_step", "direction": "forward", "weight": 1.0 },
+
+    { "source": "domain:user-authentication", "target": "domain:order-management", "type": "cross_domain", "direction": "forward", "description": "JWT tokens issued by auth service are required for all order, payment, and reservation endpoints; user identity flows from auth to order domain", "weight": 0.6 },
+    { "source": "domain:user-authentication", "target": "domain:admin-management", "type": "cross_domain", "direction": "forward", "description": "Admin service manages user account lifecycle; user CRUD operations in admin domain directly affect auth domain user repository", "weight": 0.6 },
+    { "source": "domain:user-authentication", "target": "domain:food-catering", "type": "cross_domain", "direction": "forward", "description": "Food orders require authenticated user identity from auth domain JWT token for order attribution", "weight": 0.6 },
+    { "source": "domain:train-travel-search", "target": "domain:order-management", "type": "cross_domain", "direction": "forward", "description": "Travel search results, route data, and seat availability are primary inputs for ticket reservation and order creation flows", "weight": 0.6 },
+    { "source": "domain:train-travel-search", "target": "domain:food-catering", "type": "cross_domain", "direction": "forward", "description": "Trip, station, and seat information from travel domain is consumed by food catering to match delivery zones and validate food orders against valid trips", "weight": 0.6 },
+    { "source": "domain:order-management", "target": "domain:food-catering", "type": "cross_domain", "direction": "forward", "description": "Confirmed ticket orders enable food ordering for the associated trip; food orders reference trip and seat from ticket orders", "weight": 0.6 },
+    { "source": "domain:order-management", "target": "domain:infrastructure-support", "type": "cross_domain", "direction": "forward", "description": "Order completion, cancellation, and payment events trigger email notifications dispatched by the notification service via RabbitMQ", "weight": 0.6 },
+    { "source": "domain:food-catering", "target": "domain:infrastructure-support", "type": "cross_domain", "direction": "forward", "description": "Food delivery status changes trigger notification events sent through the infrastructure notification service", "weight": 0.6 },
+    { "source": "domain:admin-management", "target": "domain:order-management", "type": "cross_domain", "direction": "forward", "description": "Admin oversight allows manual inspection and modification of all orders, including status override and record deletion", "weight": 0.6 },
+    { "source": "domain:admin-management", "target": "domain:train-travel-search", "type": "cross_domain", "direction": "forward", "description": "Admin creates and maintains route definitions and travel schedules that form the catalog consumed by the travel search domain", "weight": 0.6 },
+    { "source": "domain:infrastructure-support", "target": "domain:order-management", "type": "cross_domain", "direction": "forward", "description": "Configuration values from config service influence pricing and business rule parameters used by order and payment services", "weight": 0.6 }
+  ],
+  "layers": [],
+  "tour": []
+}
