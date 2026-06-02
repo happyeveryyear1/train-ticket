@@ -151,6 +151,7 @@ public class TravelServiceImpl implements TravelService {
             t.setTerminalStationName(info.getTerminalStationName());
             t.setStartTime(info.getStartTime());
             t.setEndTime(info.getEndTime());
+            TravelServiceImpl.LOGGER.error("[retrieve][Retrieve trip error][Trip not found][TripId: {}]", tripId);
             t.setRouteId(info.getRouteId());
             repository.save(t);
             TravelServiceImpl.LOGGER.error("[retrieve][Retrieve trip error][Trip not found][TripId: {}]", tripId);
@@ -421,6 +422,7 @@ public class TravelServiceImpl implements TravelService {
 
         Route route = tr.getRoute();
         List<String> stationList = route.getStations();
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
 
         int firstClassTotalNum = tr.getTrainType().getConfortClass();
         int secondClassTotalNum = tr.getTrainType().getEconomyClass();
@@ -523,6 +525,9 @@ public class TravelServiceImpl implements TravelService {
                 new ParameterizedTypeReference<Response<TrainType>>() {
                 });
 
+        if (re.getBody().getStatus() == 0) {
+            TravelServiceImpl.LOGGER.error("[getTrainTypeByName][Get train type error][Train type not found][TrainTypeName: {}]", trainTypeName);
+        }
         return re.getBody().getData();
     }
 
@@ -536,7 +541,7 @@ public class TravelServiceImpl implements TravelService {
                 requestEntity,
                 Response.class);
         Response routeRes = re.getBody();
-
+        TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]");
         Route route1 = new Route();
         TravelServiceImpl.LOGGER.info("[getRouteByRouteId][Get Route By Id][Routes Response is : {}]", routeRes.toString());
         if (routeRes.getStatus() == 1) {
