@@ -128,6 +128,12 @@ public class SeatServiceImpl implements SeatService {
 
     @Override
     public Response getLeftTicketOfInterval(Seat seatRequest, HttpHeaders headers) {
+        if (seatRequest == null || seatRequest.getTrainNumber() == null ||
+                seatRequest.getStartStation() == null || seatRequest.getDestStation() == null ||
+                seatRequest.getStations() == null || seatRequest.getStations().isEmpty() ||
+                seatRequest.getTotalNum() <= 0) {
+            return new Response<>(0, "Invalid seat interval request", 0);
+        }
         int numOfLeftTicket = 0;
         LeftTicketInfo leftTicketInfo;
         ResponseEntity<Response<LeftTicketInfo>> re3;
@@ -171,7 +177,7 @@ public class SeatServiceImpl implements SeatService {
         List<String> stationList = seatRequest.getStations();
         int seatTotalNum = seatRequest.getTotalNum();
         int solidTicketSize = 0;
-        if (leftTicketInfo != null) {
+        if (leftTicketInfo != null && leftTicketInfo.getSoldTickets() != null) {
             String startStation = seatRequest.getStartStation();
             Set<Ticket> soldTickets = leftTicketInfo.getSoldTickets();
             solidTicketSize = soldTickets.size();
@@ -198,6 +204,7 @@ public class SeatServiceImpl implements SeatService {
 
         int unusedNum = (int) (seatTotalNum * direstPart) - solidTicketSize;
         numOfLeftTicket += unusedNum;
+        numOfLeftTicket = Math.max(0, Math.min(numOfLeftTicket, seatTotalNum));
 
         return new Response<>(1, "Get Left Ticket of Internal Success", numOfLeftTicket);
     }
@@ -213,8 +220,18 @@ public class SeatServiceImpl implements SeatService {
                 requestEntity,
                 new ParameterizedTypeReference<Response<Config>>() {
                 });
-        Response<Config> configValue = re.getBody();
-        SeatServiceImpl.LOGGER.info("[getDirectProportion][Configs is : {}]", configValue.getData().toString());
-        return Double.parseDouble(configValue.getData().getValue());
+        Response<Config> configValue = re == null ? null : re.getBody();
+        if (configValue == null || configValue.getStatus() != 1 ||
+                configValue.getData() == null || configValue.getData().getValue() == null) {
+            SeatServiceImpl.LOGGER.warn("[getDirectProportion][Missing allocation configuration][result: {}]", configValue);
+            return 0.5;
+        }
+        try {
+            double proportion = Double.parseDouble(configValue.getData().getValue());
+            return Double.isFinite(proportion) ? Math.max(0.0, Math.min(1.0, proportion)) : 0.5;
+        } catch (NumberFormatException e) {
+            SeatServiceImpl.LOGGER.warn("[getDirectProportion][Invalid allocation configuration][value: {}]", configValue.getData().getValue());
+            return 0.5;
+        }
     }
 }
