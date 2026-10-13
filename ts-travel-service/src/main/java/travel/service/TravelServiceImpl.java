@@ -321,6 +321,9 @@ public class TravelServiceImpl implements TravelService {
 
     private List<TripResponse> getTicketsByBatch(List<Trip> trips, String startPlaceName, String endPlaceName, String departureTime, HttpHeaders headers) {
         List<TripResponse> responses = new ArrayList<>();
+        if (trips == null || trips.isEmpty() || departureTime == null) {
+            return responses;
+        }
         //Determine if the date checked is the same day and after
         if (!afterToday(departureTime)) {
             TravelServiceImpl.LOGGER.info("[getTickets][depaturetime not vailid][departuretime: {}]", departureTime);
@@ -350,9 +353,9 @@ public class TravelServiceImpl implements TravelService {
                 requestEntity,
                 Response.class);
 
-        Response r = re.getBody();
-        if(r.getStatus() == 0){
-            TravelServiceImpl.LOGGER.info("[getTicketsByBatch][Ts-basic-service response status is 0][response is: {}]", r);
+        Response r = re == null ? null : re.getBody();
+        if (r == null || r.getStatus() != 1 || r.getData() == null) {
+            TravelServiceImpl.LOGGER.warn("[getTicketsByBatch][Basic service returned no usable travel data][response: {}]", r);
             return responses;
         }
         Map<String, TravelResult> trMap;
@@ -369,15 +372,22 @@ public class TravelServiceImpl implements TravelService {
             String tripNumber = trEntry.getKey();
             TravelResult tr = trEntry.getValue();
             Trip trip = tripMap.get(tripNumber);
-
+            if (trip == null || tr == null) {
+                continue;
+            }
             TripResponse response = setResponse(trip, tr, startPlaceName, endPlaceName, departureTime, headers);
-            responses.add(response);
+            if (response != null) {
+                responses.add(response);
+            }
         }
         return responses;
     }
 
     private TripResponse getTickets(Trip trip, Route route1, String startPlaceName, String endPlaceName, String departureTime, HttpHeaders headers) {
 
+        if (trip == null || departureTime == null) {
+            return null;
+        }
         //Determine if the date checked is the same day and after
         if (!afterToday(departureTime)) {
             TravelServiceImpl.LOGGER.info("[getTickets][depaturetime not vailid][departuretime: {}]", departureTime);
@@ -399,13 +409,16 @@ public class TravelServiceImpl implements TravelService {
                 requestEntity,
                 Response.class);
 
-        Response r = re.getBody();
-        if(r.getStatus() == 0){
-            TravelServiceImpl.LOGGER.info("[getTickets][Ts-basic-service response status is 0][response is: {}]", r);
+        Response r = re == null ? null : re.getBody();
+        if (r == null || r.getStatus() != 1 || r.getData() == null) {
+            TravelServiceImpl.LOGGER.warn("[getTickets][Basic service returned no usable travel data][response: {}]", r);
             return null;
         }
 
-        TravelResult resultForTravel = JsonUtils.conveterObject(re.getBody().getData(), TravelResult.class);
+        TravelResult resultForTravel = JsonUtils.conveterObject(r.getData(), TravelResult.class);
+        if (resultForTravel == null) {
+            return null;
+        }
 
         //Set the returned ticket information
         return setResponse(trip, resultForTravel, startPlaceName, endPlaceName, departureTime, headers);
