@@ -425,6 +425,9 @@ public class TravelServiceImpl implements TravelService {
     }
 
     private TripResponse setResponse(Trip trip, TravelResult tr, String startPlaceName, String endPlaceName, String departureTime, HttpHeaders headers){
+        if (trip == null || tr == null || tr.getRoute() == null || tr.getTrainType() == null) {
+            return null;
+        }
         //Set the returned ticket information
         TripResponse response = new TripResponse();
         response.setConfortClass(50);
@@ -433,16 +436,16 @@ public class TravelServiceImpl implements TravelService {
         Route route = tr.getRoute();
         List<String> stationList = route.getStations();
 
-        int firstClassTotalNum = tr.getTrainType().getConfortClass();
-        int secondClassTotalNum = tr.getTrainType().getEconomyClass();
+        int firstClassTotalNum = Math.max(0, tr.getTrainType().getConfortClass());
+        int secondClassTotalNum = Math.max(0, tr.getTrainType().getEconomyClass());
 
         int first = getRestTicketNumber(departureTime, trip.getTripId().toString(),
                 startPlaceName, endPlaceName, SeatClass.FIRSTCLASS.getCode(), firstClassTotalNum, stationList, headers);
 
         int second = getRestTicketNumber(departureTime, trip.getTripId().toString(),
                 startPlaceName, endPlaceName, SeatClass.SECONDCLASS.getCode(), secondClassTotalNum, stationList, headers);
-        response.setConfortClass(first);
-        response.setEconomyClass(second);
+        response.setConfortClass(Math.min(first, firstClassTotalNum));
+        response.setEconomyClass(Math.min(second, secondClassTotalNum));
 
         response.setStartStation(startPlaceName);
         response.setTerminalStation(endPlaceName);
@@ -552,6 +555,9 @@ public class TravelServiceImpl implements TravelService {
     }
 
     private int getRestTicketNumber(String travelDate, String trainNumber, String startStationName, String endStationName, int seatType, int totalNum, List<String> stationList, HttpHeaders headers) {
+        if (totalNum <= 0) {
+            return 0;
+        }
         Seat seatRequest = new Seat();
 
         seatRequest.setDestStation(endStationName);
@@ -572,9 +578,14 @@ public class TravelServiceImpl implements TravelService {
                 requestEntity,
                 new ParameterizedTypeReference<Response<Integer>>() {
                 });
-        TravelServiceImpl.LOGGER.info("[getRestTicketNumber][Get Rest tickets num][num is: {}]", re.getBody().toString());
-
-        return re.getBody().getData();
+        Response<Integer> seatResult = re == null ? null : re.getBody();
+        if (seatResult == null || seatResult.getStatus() != 1 || seatResult.getData() == null) {
+            TravelServiceImpl.LOGGER.warn("[getRestTicketNumber][Seat service returned no usable ticket count][result: {}]", seatResult);
+            return 0;
+        }
+        int available = Math.max(0, Math.min(seatResult.getData(), totalNum));
+        TravelServiceImpl.LOGGER.info("[getRestTicketNumber][Available tickets after capacity check][num: {}]", available);
+        return available;
     }
 
     @Override
