@@ -202,6 +202,11 @@ public class TravelServiceImpl implements TravelService {
 
     @Override
     public Response queryByBatch(TripInfo info, HttpHeaders headers) {
+        if (info == null || info.getStartPlace() == null || info.getStartPlace().trim().isEmpty() ||
+                info.getEndPlace() == null || info.getEndPlace().trim().isEmpty() ||
+                info.getDepartureTime() == null || info.getDepartureTime().trim().isEmpty()) {
+            return new Response<>(0, "Departure, arrival and travel date are required", Collections.emptyList());
+        }
 
         //Gets the start and arrival stations of the train number to query. The originating and arriving stations received here are both station names, so two requests need to be sent to convert to station ids
         String startPlaceName = info.getStartPlace();
@@ -212,8 +217,11 @@ public class TravelServiceImpl implements TravelService {
 
         //Check all train info
         List<Trip> allTripList = repository.findAll();
+        if (allTripList == null || allTripList.isEmpty()) {
+            return new Response<>(0, "No trips available", list);
+        }
         list = getTicketsByBatch(allTripList, startPlaceName, endPlaceName, info.getDepartureTime(), headers);
-        return new Response<>(1, success, list);
+        return list.isEmpty() ? new Response<>(0, "No matching trips", list) : new Response<>(1, success, list);
     }
 
     @TraceCrossThread
@@ -255,6 +263,11 @@ public class TravelServiceImpl implements TravelService {
 
     @Override
     public Response queryInParallel(TripInfo info, HttpHeaders headers) {
+        if (info == null || info.getStartPlace() == null || info.getStartPlace().trim().isEmpty() ||
+                info.getEndPlace() == null || info.getEndPlace().trim().isEmpty() ||
+                info.getDepartureTime() == null || info.getDepartureTime().trim().isEmpty()) {
+            return new Response<>(0, "Departure, arrival and travel date are required", Collections.emptyList());
+        }
         //Gets the start and arrival stations of the train number to query. The originating and arriving stations received here are both station names, so two requests need to be sent to convert to station ids
         String startPlaceName = info.getStartPlace();
         String endPlaceName = info.getEndPlace();
@@ -264,6 +277,9 @@ public class TravelServiceImpl implements TravelService {
 
         //Check all train info
         List<Trip> allTripList = repository.findAll();
+        if (allTripList == null || allTripList.isEmpty()) {
+            return new Response<>(0, "No trips available", list);
+        }
         List<Future<TripResponse>> futureList = new ArrayList<>();
 
         if(allTripList != null ){
@@ -280,8 +296,11 @@ public class TravelServiceImpl implements TravelService {
                 if (response != null) {
                     list.add(response);
                 }
-            } catch (Exception e) {
-                TravelServiceImpl.LOGGER.error("[queryInParallel][Query error]"+e.toString());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return new Response<>(0, "Travel query interrupted", list);
+            } catch (ExecutionException e) {
+                TravelServiceImpl.LOGGER.error("[queryInParallel][Query error]", e);
             }
         }
 
